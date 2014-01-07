@@ -20,3 +20,6 @@ for data in manager.run_rpc('<get-chassis-inventory/>', devices):
     print data['Output'].xpath('//chassis/description')[0].text
     print data['Output'].xpath('//chassis/serial-number')[0].text
     print ""
+
+for data in manager.last_errors:
+    print "%s: %s" % (data['Hostname'], data['Output'])

@@ -101,6 +101,8 @@ class Manager(object):
         self._session = requests.Session()
         self._session.mount('https://', MoreSecureAdapter())
 
+        self.last_errors = []
+
     def set_credentials(self, creds):
         self._credentials = creds
 
@@ -134,11 +136,18 @@ class Manager(object):
         req = self._make_request(json.dumps(payload))
         resp = self._session.send(req, stream=True)
 
+        errors = []
+
         for line in resp.iter_lines():
             if line:
                 data = json.loads(line)
+                if data['Success'] is False:
+                    errors.append(data)
+                    continue
                 data['Output'] = self._parse_xml(data['Output'])
                 yield data
+
+        self.last_errors = errors
 
     def _parse_xml(self, string):
         """
