@@ -4,11 +4,31 @@ import json
 import os
 import requests
 import urllib2
+import ssl
 
 from lxml import etree
 from StringIO import StringIO
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.poolmanager import PoolManager
 
-NETCONF_PROXY_ENDPOINT=os.environ.get('NETCONF_PROXY_ENDPOINT', 'http://localhost:8080/netconf')
+NETCONF_PROXY_ENDPOINT = os.environ.get('NETCONF_PROXY_ENDPOINT', 'http://localhost:8080/netconf')
+SSL_ASSERT_HOSTNAME = os.environ.get('SSL_ASSERT_HOSTNAME', True)
+
+if SSL_ASSERT_HOSTNAME in ['false', '0', 0]:
+    SSL_ASSERT_HOSTNAME = False
+
+class MoreSecureAdapter(HTTPAdapter):
+    """
+    The netconf_proxy TLS server only implements TLSv1, on some systems
+    the default is to try SSLv2 first, which will fail. The SSL_ASSERT_HOSTNAME
+    environment variable can be used to turn off strict hostname checking.
+    """
+    def init_poolmanager(self, connections, maxsize, block=False):
+        self.poolmanager = PoolManager(num_pools=connections,
+                                       maxsize=maxsize,
+                                       block=block,
+                                       assert_hostname=SSL_ASSERT_HOSTNAME,
+                                       ssl_version=ssl.PROTOCOL_TLSv1)
 
 class Credentials(object):
     """
@@ -79,6 +99,7 @@ class Manager(object):
         self._store = store
         self._credentials = creds
         self._session = requests.Session()
+        self._session.mount('https://', MoreSecureAdapter())
 
     def set_credentials(self, creds):
         self._credentials = creds
