@@ -1,0 +1,5 @@
+distribute==0.6.34
+lxml==3.3.0beta3
+requests==2.1.0
+wsgiref==0.1.2
+xmltodict==0.8.3
