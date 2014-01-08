@@ -89,12 +89,13 @@ class MetaStore(object):
         pass
 
 class Manager(object):
-    def __init__(self, endpoint=NETCONF_PROXY_ENDPOINT, store=None, creds=None):
+    def __init__(self, endpoint=NETCONF_PROXY_ENDPOINT, store=None, creds=None, xml_pre_parser=None):
         self._endpoint = endpoint
         self._store = store
         self._credentials = creds
         self._session = requests.Session()
         self._session.mount('https://', MoreSecureAdapter())
+        self.xml_pre_parser = xml_pre_parser
 
         self.last_errors = []
 
@@ -172,6 +173,8 @@ class Manager(object):
         </xsl:template>
         </xsl:stylesheet>
         """
+        if self.xml_pre_parser is not None:
+            string = self.xml_pre_parser(string)
         parser = etree.XMLParser(remove_blank_text=True)
         xslt_doc = etree.parse(io.BytesIO(xslt), parser)
         transform = etree.XSLT(xslt_doc)
