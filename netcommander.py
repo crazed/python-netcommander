@@ -12,10 +12,6 @@ from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.poolmanager import PoolManager
 
 NETCONF_PROXY_ENDPOINT = os.environ.get('NETCONF_PROXY_ENDPOINT', 'http://localhost:8080/netconf')
-SSL_ASSERT_HOSTNAME = os.environ.get('SSL_ASSERT_HOSTNAME', True)
-
-if SSL_ASSERT_HOSTNAME in ['false', '0', 0]:
-    SSL_ASSERT_HOSTNAME = False
 
 class MoreSecureAdapter(HTTPAdapter):
     """
@@ -27,7 +23,6 @@ class MoreSecureAdapter(HTTPAdapter):
         self.poolmanager = PoolManager(num_pools=connections,
                                        maxsize=maxsize,
                                        block=block,
-                                       assert_hostname=SSL_ASSERT_HOSTNAME,
                                        ssl_version=ssl.PROTOCOL_TLSv1)
 
 class Credentials(object):
