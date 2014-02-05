@@ -12,6 +12,15 @@ class OptopusMetaStore(MetaStore):
         self._endpoint = endpoint
         self._client = Client(endpoint=self._endpoint)
 
+    def all_devices(self):
+        devices = Devices()
+        res = self._client.active_network_nodes()
+        for data in res:
+            node = data['network_node']
+            device = Device(node['hostname'], **node['facts'])
+            devices.append(device)
+        return devices
+
     def search(self, query_string):
         devices = Devices()
         res = self._client.search(query_string, types=['network_node'])
@@ -30,6 +39,9 @@ class Client(object):
         if types:
             path += "&types=%s" % ','.join(types)
         return self._get(path)['results']
+
+    def active_network_nodes(self):
+        return self._get('/api/network_nodes/active')
 
     def _get(self, path):
         req = urllib2.Request("%s%s" % (self._endpoint, path))

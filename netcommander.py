@@ -87,6 +87,11 @@ class MetaStore(object):
         objects that match an arbitrary search.
         """
         pass
+    def all_devices(self, *args, **kwargs):
+        """
+        This is expected to Devices object with all devices available.
+        """
+        pass
 
 class Manager(object):
     def __init__(self, endpoint=NETCONF_PROXY_ENDPOINT, store=None, creds=None, xml_pre_parser=None):
@@ -107,6 +112,9 @@ class Manager(object):
 
     def search(self, *args, **kwargs):
         return self._store.search(*args, **kwargs)
+
+    def all_devices(self, *args, **kwargs):
+        return self._store.all_devices(*args, **kwargs)
 
     def run_rpc(self, tree, devices):
         """
