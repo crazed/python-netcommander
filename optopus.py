@@ -35,6 +35,8 @@ class Client(object):
         self._dry_run = dry_run
 
     def search(self, string, types=None):
+        if 'active' not in string:
+            string += ' active:true'
         path = "/api/search?string=%s" % urllib2.quote(string)
         if types:
             path += "&types=%s" % ','.join(types)
