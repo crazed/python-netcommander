@@ -80,6 +80,12 @@ class Devices(DictMixin):
     def hostnames(self):
         return self._dict.keys()
 
+    def get_fact_list(self, fact):
+        ret = []
+        for hostname, device in self._dict.items():
+            ret.append(device[fact])
+        return ret
+
 class MetaStore(object):
     def search(self, *args, **kwargs):
         """
@@ -116,7 +122,7 @@ class Manager(object):
     def all_devices(self, *args, **kwargs):
         return self._store.all_devices(*args, **kwargs)
 
-    def run_rpc(self, tree, devices):
+    def run_rpc(self, tree, devices, use_ip_address=False):
         """
         This simply appends the rpc tag to the supplied tree, and removes the rpc-reply
         tag from the response.
@@ -127,15 +133,21 @@ class Manager(object):
 
         rpc = etree.Element('rpc')
         rpc.append(tree)
-        for data in self.run(rpc, devices):
+        for data in self.run(rpc, devices, use_ip_address):
             data['Output'] = data['Output'][0]
             yield data
 
-    def run(self, tree, devices):
+    def run(self, tree, devices, use_ip_address=False):
+        # Some environments don't have perfect DNS records, so let them use
+        # IP addresses instead
+        hosts = devices.hostnames
+        if use_ip_address:
+            hosts = devices.get_fact_list('ipaddress')
+
         payload = {'username': self._credentials.username,
                    'password': self._credentials.password,
                    'port': self._credentials.port,
-                   'hosts': devices.hostnames,
+                   'hosts': hosts,
                    'request': etree.tostring(tree)}
         req = self._make_request(json.dumps(payload))
         resp = self._session.send(req, stream=True)
