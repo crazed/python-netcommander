@@ -55,3 +55,10 @@ class Client(object):
             url = urllib2.urlopen(req)
             results = json.loads(url.read())
         return results
+
+    def _post(self, path, data=None):
+        req = urllib2.Request("%s/%s" % (self._endpoint, path), data)
+        req.add_header('Accept', 'application/json')
+        req.add_header('User-agent', 'switcheroo')
+        url = urllib2.urlopen(req)
+        return url.read()
