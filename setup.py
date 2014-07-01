@@ -2,7 +2,7 @@
 from setuptools import setup
 
 setup(name='netcommander',
-      version='1.1',
+      version='1.2',
       description='A client library to use netconf_proxy',
       author='Allan Feid',
       author_email='allan@ops.guru',
