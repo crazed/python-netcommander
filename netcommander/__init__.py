@@ -11,7 +11,10 @@ from StringIO import StringIO
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.poolmanager import PoolManager
 
-NETCONF_PROXY_ENDPOINT = os.environ.get('NETCONF_PROXY_ENDPOINT', 'http://localhost:8080/netconf')
+NETCONF_PROXY_ENDPOINT = os.environ.get('NETCONF_PROXY_ENDPOINT', 'http://localhost:8080/v2')
+
+class ValidationError(Exception):
+    pass
 
 class MoreSecureAdapter(HTTPAdapter):
     """
@@ -71,10 +74,25 @@ class Device(DictMixin):
         return "<%s(%s %s)>" % (self.__class__.__name__, self.hostname,
                                 self._dict)
 
+    @property
+    def facts(self):
+        return self._dict
+
 class Devices(DictMixin):
     def append(self, device):
         self._dict[device.hostname] = device
         return
+
+    @property
+    def as_dict(self):
+        result = []
+        for hostname, device in self._dict.items():
+            result.append({ 'hostname': hostname, 'facts': device.facts })
+        return result
+
+    @property
+    def as_json(self):
+        return json.dumps(self.as_dict)
 
     @property
     def hostnames(self):
@@ -122,7 +140,26 @@ class Manager(object):
     def all_devices(self, *args, **kwargs):
         return self._store.all_devices(*args, **kwargs)
 
-    def run_rpc(self, tree, devices, use_ip_address=False):
+    def validate(self, tree, devices):
+        """
+        Hits the validate endpoint of the netconf proxy, which will tell us
+        whether a supplied template is valid.
+        """
+        if not etree.iselement(tree):
+            tree = etree.fromstring(tree)
+
+        payload = {'username': self._credentials.username,
+                   'password': self._credentials.password,
+                   'port': self._credentials.port,
+                   'nodes': devices.as_dict,
+                   'request': etree.tostring(tree)}
+        req = self._make_request(path='validate', data=json.dumps(payload))
+        resp = self._session.send(req)
+        if resp.status_code != 200:
+            raise ValidationError(resp.text)
+        return resp
+
+    def run_rpc(self, tree, devices):
         """
         This simply appends the rpc tag to the supplied tree, and removes the rpc-reply
         tag from the response.
@@ -133,23 +170,17 @@ class Manager(object):
 
         rpc = etree.Element('rpc')
         rpc.append(tree)
-        for data in self.run(rpc, devices, use_ip_address):
+        for data in self.run(rpc, devices):
             data['Output'] = data['Output'][0]
             yield data
 
-    def run(self, tree, devices, use_ip_address=False):
-        # Some environments don't have perfect DNS records, so let them use
-        # IP addresses instead
-        hosts = devices.hostnames
-        if use_ip_address:
-            hosts = devices.get_fact_list('ipaddress')
-
+    def run(self, tree, devices):
         payload = {'username': self._credentials.username,
                    'password': self._credentials.password,
                    'port': self._credentials.port,
-                   'hosts': hosts,
+                   'nodes': devices.as_dict,
                    'request': etree.tostring(tree)}
-        req = self._make_request(json.dumps(payload))
+        req = self._make_request(path='netconf', data=json.dumps(payload))
         resp = self._session.send(req, stream=True)
 
         errors = []
@@ -202,9 +233,10 @@ class Manager(object):
         return root
 
 
-    def _make_request(self, data=None):
+    def _make_request(self, path='',  data=None):
         headers = {'accept': 'application/json',
                    'user-agent': 'python-netcommander',
                    'connection': 'keep-alive'}
-        return requests.Request('POST', self._endpoint,
+        full_url = os.path.join(self._endpoint, path)
+        return requests.Request('POST', full_url,
                                 headers=headers, data=data).prepare()
