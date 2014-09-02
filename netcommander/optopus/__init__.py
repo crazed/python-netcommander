@@ -23,6 +23,8 @@ class OptopusMetaStore(MetaStore):
 
     def search(self, query_string):
         devices = Devices()
+        if 'active' not in query_string:
+            query_string += ' active:true'
         res = self._client.search(query_string, types=['network_node'])
         for data in res:
             device = Device(data['hostname'], **data['facts'])
@@ -35,8 +37,6 @@ class Client(object):
         self._dry_run = dry_run
 
     def search(self, string, types=None):
-        if 'active' not in string:
-            string += ' active:true'
         path = "/api/search?string=%s" % urllib2.quote(string)
         if types:
             path += "&types=%s" % ','.join(types)
