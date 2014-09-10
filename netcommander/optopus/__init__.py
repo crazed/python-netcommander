@@ -68,5 +68,5 @@ class Client(object):
         req = urllib2.Request("%s/%s" % (self._endpoint, path), data)
         req.add_header('Content-Type', 'application/json')
         req.get_method = lambda: 'PUT'
-        url = opener.open(request)
+        url = opener.open(req)
         return url.read()
