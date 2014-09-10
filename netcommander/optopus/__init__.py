@@ -62,3 +62,11 @@ class Client(object):
         req.add_header('User-agent', 'switcheroo')
         url = urllib2.urlopen(req)
         return url.read()
+
+    def _put(self, path, data=None):
+        opener = urllib2.build_opener(urllib2.HTTPHandler)
+        req = urllib2.Request("%s/%s" % (self._endpoint, path), data)
+        req.add_header('Content-Type', 'application/json')
+        req.get_method = lambda: 'PUT'
+        url = opener.open(request)
+        return url.read()
