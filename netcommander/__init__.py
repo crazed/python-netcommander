@@ -171,6 +171,10 @@ class Manager(object):
         rpc = etree.Element('rpc')
         rpc.append(tree)
         for data in self.run(rpc, devices):
+            if len(data['Output']) == 0:
+                data['Success'] = False
+                data['Output'] = "Received empty rpc-reply! Likely a buggy system."
+                continue
             data['Output'] = data['Output'][0]
             yield data
 
@@ -183,18 +187,16 @@ class Manager(object):
         req = self._make_request(path='netconf', data=json.dumps(payload))
         resp = self._session.send(req, stream=True)
 
-        errors = []
+        self.last_errors = []
 
         for line in resp.iter_lines():
             if line:
                 data = json.loads(line)
                 if data['Success'] is False:
-                    errors.append(data)
+                    self.last_errors.append(data)
                     continue
                 data['Output'] = self._parse_xml(data['Output'])
                 yield data
-
-        self.last_errors = errors
 
     def _parse_xml(self, string):
         """
